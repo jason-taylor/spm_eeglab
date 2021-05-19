@@ -6,6 +6,8 @@ function [fmain,fchild] = spm_eeglab_eegplot(S)
 %   S.ICA      - ICA struct (if S.compinds used) (from spm_eeglab_runica)
 %   - plot options:
 %   S.spacing  - Scale of main axis (def: 100)
+%   S.dispchans - Number of channels to display (def: 12)
+%   S.winlength - Length (s) of window to display (def: 5)
 %   S.title    - Title of main axis (def: '')
 %   S.locfile  - Filename of eeglab chanloc file (default: create one)
 %   - data: ONE of:
@@ -34,6 +36,7 @@ function [fmain,fchild] = spm_eeglab_eegplot(S)
 %
 %  spm_icameeg and spm_eeglab tools
 %  by Jason Taylor (09/Mar/2018) jason.taylor@manchester.ac.uk
+%   + JT (31/Mar/2021) added dispchans, winlength
 
 % Could add more options: 
 % - time window
@@ -50,6 +53,9 @@ try data    = S.data;    catch, data    =[];   end
 try data2   = S.data2;   catch, data2   =[];   end
 try mytitle = S.title;   catch, mytitle = '';  end
 try spacing = S.spacing; catch, spacing = 100; end
+try dispchans = S.dispchans; catch, dispchans = 12; end
+try winlength = S.winlength; catch, winlength = 5; end
+
 try locfile = S.locfile; catch, locfile = 0;  end
 
 if ~isempty(data)
@@ -187,22 +193,24 @@ if ~locfile
     end
 end
 
-if ~chlocfile    
-    % hack to use channel/IC labels rather than indices:
-    if ~isempty(chci)
-        chlocfile = 'tmp_ch_chanlabs.xyz';
-        fid=fopen(chlocfile,'w');
-        for i=1:length(chci)
-            fprintf(fid,'%d\t0\t0\t0\t%s\n',i,chcl{i});
+if do_chwin
+    if ~chlocfile
+        % hack to use channel/IC labels rather than indices:
+        if ~isempty(chci)
+            chlocfile = 'tmp_ch_chanlabs.xyz';
+            fid=fopen(chlocfile,'w');
+            for i=1:length(chci)
+                fprintf(fid,'%d\t0\t0\t0\t%s\n',i,chcl{i});
+            end
+            fclose(fid);
+        elseif ~isempty(chii)
+            chlocfile = 'tmp_ch_icalabs.xyz';
+            fid=fopen(chlocfile,'w');
+            for i=1:length(chii)
+                fprintf(fid,'%d\t0\t0\t0\tIC%02d\n',i,chii(i));
+            end
+            fclose(fid);
         end
-        fclose(fid);    
-    elseif ~isempty(chii)
-        chlocfile = 'tmp_ch_icalabs.xyz';
-        fid=fopen(chlocfile,'w');
-        for i=1:length(chii)
-            fprintf(fid,'%d\t0\t0\t0\tIC%02d\n',i,chii(i));
-        end
-        fclose(fid);
     end
 end
 
@@ -210,7 +218,7 @@ end
 if do_chwin
 
     % Plot child:
-    eegplot(chdata,'srate',D.fsample,'spacing',chspacing,'eloc_file',chlocfile);
+    eegplot(chdata,'srate',D.fsample,'spacing',chspacing,'winlength',winlength,'eloc_file',chlocfile);
     fchild = gcf;
     axes(findobj(fchild,'Tag','eegaxis'));
     if any(chtitle)
@@ -223,9 +231,9 @@ if do_chwin
 
     % Plot main:
     if ~isempty(data2)
-        eegplot(data(:,:,:),'srate',D.fsample,'children',fchild,'dispchans',min(12,size(data,1)),'data2',data2,'spacing',spacing,'eloc_file',locfile);
+        eegplot(data(:,:,:),'srate',D.fsample,'children',fchild,'dispchans',min(dispchans,size(data,1)),'winlength',winlength,'data2',data2,'spacing',spacing,'eloc_file',locfile);
     else
-        eegplot(data(:,:,:),'srate',D.fsample,'children',fchild,'dispchans',min(12,size(data,1)),'spacing',spacing,'eloc_file',locfile);
+        eegplot(data(:,:,:),'srate',D.fsample,'children',fchild,'dispchans',min(dispchans,size(data,1)),'winlength',winlength,'spacing',spacing,'eloc_file',locfile);
     end
     fmain = gcf;
     % Re-size and re-position
@@ -237,9 +245,9 @@ else
     
     % Plot main:
     if ~isempty(data2)
-        eegplot(data(:,:,:),'srate',D.fsample,'dispchans',min(12,size(data,1)),'data2',data2,'spacing',spacing,'eloc_file',locfile);
+        eegplot(data(:,:,:),'srate',D.fsample,'dispchans',min(dispchans,size(data,1)),'winlength',winlength,'data2',data2,'spacing',spacing,'eloc_file',locfile);
     else
-        eegplot(data(:,:,:),'srate',D.fsample,'dispchans',min(12,size(data,1)),'spacing',spacing,'eloc_file',locfile);
+        eegplot(data(:,:,:),'srate',D.fsample,'dispchans',min(dispchans,size(data,1)),'winlength',winlength','spacing',spacing,'eloc_file',locfile);
     end
     fmain = gcf;
     fchild = [];
